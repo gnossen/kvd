@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package key_value;
+
+// A key-value pair.
+message Record {
+  // The key identifying the pair.
+  string name = 1;
+
+  // The string value of the pari.
+  string value = 2;
+}
+
+// A request for the value associated with a given key.
+message GetRecordRequest {
+  string name = 1;
+}
+
+// A request to create a new record.
+message CreateRecordRequest {
+  // The Record to create.
+  Record record = 1;
+}
+
+// A request to update an existing record.
+message UpdateRecordRequest {
+  // The record to update.
+  Record record = 1;
+}
+
+// A request to watch an existing record for updates.
+message WatchRecordRequest {
+  // The name of the record to watch.
+  string name = 1;
+}
+
+// A simple key-value store service.
+service KeyValueStore {
+  // Look up the value associated with a given key.
+  rpc GetRecord(GetRecordRequest) returns (Record) {}
+
+  // Associate a value with a given key.
+  rpc CreateRecord(CreateRecordRequest) returns (Record) {}
+
+  // Update the value associated with a given key.
+  rpc UpdateRecord(UpdateRecordRequest) returns (Record) {}
+
+  // Watch the requested record for updates.
+  rpc WatchRecord(WatchRecordRequest) returns (stream Record) {}
+}
