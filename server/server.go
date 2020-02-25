@@ -1,3 +1,5 @@
+//go:generate protoc -I../kvd ../kvd/key_value.proto --go_out=plugins=grpc:../kvd
+
 package main
 
 // TODO: Format!
@@ -76,7 +78,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	//.TODO: Reflection.
 	grpcServer := grpc.NewServer()
 	store := newKeyValueStore()
 	pb.RegisterKeyValueStoreServer(grpcServer, store)
