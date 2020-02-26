@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 
 	"google.golang.org/grpc"
@@ -20,7 +21,7 @@ func create(client pb.KeyValueStoreClient, name string, value string) {
 	if _, err := client.CreateRecord(context.Background(), &request); err != nil {
 		log.Fatalf("Creation failed: %v", err)
 	}
-	fmt.Printf("Created key '%s' with value '%s'\n", name, value)
+	fmt.Printf("'%s': '%s'\n", name, value)
 }
 
 func update(client pb.KeyValueStoreClient, name string, value string) {
@@ -28,7 +29,7 @@ func update(client pb.KeyValueStoreClient, name string, value string) {
 	if _, err := client.UpdateRecord(context.Background(), &request); err != nil {
 		log.Fatalf("Update failed: %v", err)
 	}
-	fmt.Printf("Update key '%s' to value '%s'\n", name, value)
+	fmt.Printf("'%s': '%s'\n", name, value)
 }
 
 func get(client pb.KeyValueStoreClient, name string) {
@@ -38,7 +39,27 @@ func get(client pb.KeyValueStoreClient, name string) {
 	if record, err = client.GetRecord(context.Background(), &request); err != nil {
 		log.Fatalf("Get operation failed: %v", err)
 	}
-	fmt.Printf("Key '%s' has value '%s'\n", record.Name, record.Value)
+	fmt.Printf("'%s': '%s'\n", record.Name, record.Value)
+}
+
+func watch(client pb.KeyValueStoreClient, name string) {
+	request := pb.WatchRecordRequest{Name: name}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stream, err := client.WatchRecord(ctx, &request)
+	if err != nil {
+		log.Fatalf("Failed to watch key '%s': %v", name, err)
+	}
+	var record *pb.Record
+	for {
+		if record, err = stream.Recv(); err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalf("Encountered error: %v", err)
+		}
+		fmt.Printf("'%s': '%s'\n", record.Name, record.Value)
+	}
 }
 
 func main() {
@@ -54,7 +75,7 @@ func main() {
 	getName := getCmd.String("name", "", "The name to get.")
 
 	watchCmd := flag.NewFlagSet("watch", flag.ExitOnError)
-	// watchName := watchCmd.String("name", "", "The name to watch.")
+	watchName := watchCmd.String("name", "", "The name to watch.")
 
 	flag.Parse()
 	conn, err := grpc.Dial(*serverAddr, []grpc.DialOption{grpc.WithInsecure()}...)
@@ -80,6 +101,7 @@ func main() {
 		get(client, *getName)
 	case "watch":
 		watchCmd.Parse(flag.Args()[1:])
+		watch(client, *watchName)
 	default:
 		log.Fatalf("Unsupported command '%s'", flag.Args()[1])
 	}
