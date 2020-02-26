@@ -36,7 +36,6 @@ func (s *kvStore) upsertLocked(key string, value string) {
 	s.m[key] = value
 	if watchers, exists := s.watchers[key]; exists {
 		for elem := watchers.Front(); elem != nil; elem = elem.Next() {
-			fmt.Printf("Notifying watcher for key '%s'\n", key)
 			watcher := elem.Value.(*chan string)
 			*watcher <- value
 		}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sync"
 
 	pb "github.com/gnossen/kvd/kvd"
 )
@@ -41,11 +42,14 @@ func Get(client pb.KeyValueStoreClient, name string) *pb.Record {
 
 func Watch(client pb.KeyValueStoreClient, name string, watchCount int) chan *pb.Record{
 	c := make(chan *pb.Record)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		request := pb.WatchRecordRequest{Name: name}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		stream, err := client.WatchRecord(ctx, &request)
+		wg.Done()
 		if err != nil {
 			log.Fatalf("Failed to watch key '%s': %v", name, err)
 		}
@@ -66,6 +70,7 @@ func Watch(client pb.KeyValueStoreClient, name string, watchCount int) chan *pb.
 		}
 		close(c)
 	}()
+	wg.Wait()
 	return c
 }
 
