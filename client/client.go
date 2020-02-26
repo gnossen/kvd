@@ -31,6 +31,16 @@ func update(client pb.KeyValueStoreClient, name string, value string) {
 	fmt.Printf("Update key '%s' to value '%s'\n", name, value)
 }
 
+func get(client pb.KeyValueStoreClient, name string) {
+	request := pb.GetRecordRequest{Name: name}
+	var record *pb.Record
+	var err error
+	if record, err = client.GetRecord(context.Background(), &request); err != nil {
+		log.Fatalf("Get operation failed: %v", err)
+	}
+	fmt.Printf("Key '%s' has value '%s'\n", record.Name, record.Value)
+}
+
 func main() {
 	createCmd := flag.NewFlagSet("create", flag.ExitOnError)
 	createName := createCmd.String("name", "", "The name to create.")
@@ -41,7 +51,7 @@ func main() {
 	updateValue := updateCmd.String("value", "", "The value to update.")
 
 	getCmd := flag.NewFlagSet("get", flag.ExitOnError)
-	// getName := getCmd.String("name", "", "The name to get.")
+	getName := getCmd.String("name", "", "The name to get.")
 
 	watchCmd := flag.NewFlagSet("watch", flag.ExitOnError)
 	// watchName := watchCmd.String("name", "", "The name to watch.")
@@ -67,6 +77,7 @@ func main() {
 		update(client, *updateName, *updateValue)
 	case "get":
 		getCmd.Parse(flag.Args()[1:])
+		get(client, *getName)
 	case "watch":
 		watchCmd.Parse(flag.Args()[1:])
 	default:
