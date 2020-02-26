@@ -23,14 +23,22 @@ func create(client pb.KeyValueStoreClient, name string, value string) {
 	fmt.Printf("Created key '%s' with value '%s'\n", name, value)
 }
 
+func update(client pb.KeyValueStoreClient, name string, value string) {
+	request := pb.UpdateRecordRequest{Record: &pb.Record{Name: name, Value: value}}
+	if _, err := client.UpdateRecord(context.Background(), &request); err != nil {
+		log.Fatalf("Update failed: %v", err)
+	}
+	fmt.Printf("Update key '%s' to value '%s'\n", name, value)
+}
+
 func main() {
 	createCmd := flag.NewFlagSet("create", flag.ExitOnError)
 	createName := createCmd.String("name", "", "The name to create.")
 	createValue := createCmd.String("value", "", "The value with which to create.")
 
 	updateCmd := flag.NewFlagSet("update", flag.ExitOnError)
-	// updateName := updateCmd.String("name", "", "The name to update.")
-	// updateValue := updateCmd.String("value", "", "The value to update.")
+	updateName := updateCmd.String("name", "", "The name to update.")
+	updateValue := updateCmd.String("value", "", "The value to update.")
 
 	getCmd := flag.NewFlagSet("get", flag.ExitOnError)
 	// getName := getCmd.String("name", "", "The name to get.")
@@ -56,6 +64,7 @@ func main() {
 		create(client, *createName, *createValue)
 	case "update":
 		updateCmd.Parse(flag.Args()[1:])
+		update(client, *updateName, *updateValue)
 	case "get":
 		getCmd.Parse(flag.Args()[1:])
 	case "watch":
