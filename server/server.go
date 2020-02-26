@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
@@ -42,7 +43,16 @@ func (s *kvStore) upsertLocked(key string, value string) {
 	}
 }
 
+func peerString(ctx context.Context) string {
+	if p, ok := peer.FromContext(ctx); ok {
+		return p.Addr.String()
+	} else {
+		return ""
+	}
+}
+
 func (s *kvStore) GetRecord(ctx context.Context, request *pb.GetRecordRequest) (*pb.Record, error) {
+	log.Printf("%s: Get '%s'\n", peerString(ctx), request.Name)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	var value string
@@ -57,6 +67,7 @@ func (s *kvStore) GetRecord(ctx context.Context, request *pb.GetRecordRequest) (
 }
 
 func (s *kvStore) CreateRecord(ctx context.Context, request *pb.CreateRecordRequest) (*pb.Record, error) {
+	log.Printf("%s: Create '%s': '%s'\n", peerString(ctx), request.Record.Name, request.Record.Value)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.m[request.Record.Name]; exists {
@@ -70,6 +81,7 @@ func (s *kvStore) CreateRecord(ctx context.Context, request *pb.CreateRecordRequ
 }
 
 func (s *kvStore) UpdateRecord(ctx context.Context, request *pb.UpdateRecordRequest) (*pb.Record, error) {
+	log.Printf("%s: Update '%s': '%s'\n", peerString(ctx), request.Record.Name, request.Record.Value)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.m[request.Record.Name]; !exists {
@@ -102,6 +114,7 @@ func (s *kvStore) removeWatcher(key string, elem *list.Element) {
 
 func (s *kvStore) WatchRecord(request *pb.WatchRecordRequest,
 	stream pb.KeyValueStore_WatchRecordServer) error {
+	log.Printf("%s: Start Watch '%s'\n", peerString(stream.Context()), request.Name)
 	c, elem := s.addWatcher(request.Name)
 	defer s.removeWatcher(request.Name, elem)
 	for {
@@ -112,6 +125,7 @@ func (s *kvStore) WatchRecord(request *pb.WatchRecordRequest,
 			stream.Send(&pb.Record{Name: request.Name, Value: value})
 		}
 	}
+	log.Printf("%s: End Watch '%s'\n", peerString(stream.Context()), request.Name)
 	return nil
 }
 
