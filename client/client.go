@@ -46,24 +46,34 @@ func Get(client pb.KeyValueStoreClient, name string) *pb.Record {
 	return record
 }
 
-func Watch(client pb.KeyValueStoreClient, name string) {
-	request := pb.WatchRecordRequest{Name: name}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	stream, err := client.WatchRecord(ctx, &request)
-	if err != nil {
-		log.Fatalf("Failed to watch key '%s': %v", name, err)
-	}
-	var record *pb.Record
-	for {
-		if record, err = stream.Recv(); err == io.EOF {
-			break
-		}
+func Watch(client pb.KeyValueStoreClient, name string, watchCount int) chan *pb.Record{
+	c := make(chan *pb.Record)
+	go func() {
+		request := pb.WatchRecordRequest{Name: name}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		stream, err := client.WatchRecord(ctx, &request)
 		if err != nil {
-			log.Fatalf("Encountered error: %v", err)
+			log.Fatalf("Failed to watch key '%s': %v", name, err)
 		}
-		PrintRecord(record)
-	}
+		var record *pb.Record
+		recordCount := 0
+		for {
+			if watchCount >= 0 && recordCount == watchCount {
+				break
+			}
+			if record, err = stream.Recv(); err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("Encountered error: %v", err)
+			}
+			c <- record
+			recordCount += 1
+		}
+		close(c)
+	}()
+	return c
 }
 
 func PrintRecord(record *pb.Record) {
@@ -109,7 +119,9 @@ func main() {
 		PrintRecord(Get(client, *getName))
 	case "watch":
 		watchCmd.Parse(flag.Args()[1:])
-		Watch(client, *watchName)
+		for record := range Watch(client, *watchName, -1) {
+			PrintRecord(record)
+		}
 	default:
 		log.Fatalf("Unsupported command '%s'", flag.Args()[1])
 	}

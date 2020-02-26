@@ -4,9 +4,12 @@ import (
 	"testing"
 	"github.com/gnossen/kvd/client"
 	"github.com/gnossen/kvd/server"
+	pb "github.com/gnossen/kvd/kvd"
+
+	"github.com/golang/protobuf/proto"
 )
 
-func TestGet(t *testing.T) {
+func TestUnary(t *testing.T) {
 	server, lis := server.NewServer()
 	go server.Serve(lis)
 	defer server.Stop()
@@ -16,5 +19,14 @@ func TestGet(t *testing.T) {
 		log.Fatalf("fail to dial: %v", err)
 	}
 	defer conn.Close()
-	client := pb.NewKeyValueStoreClient(conn)
+	cl := pb.NewKeyValueStoreClient(conn)
+	record := client.Create(cl, "foo", "oof")
+	expected = pb.Record{Name: "foo", Value: "oof"}
+	if !proto.Equal(record, &expected) {
+		t.Fatalf("Expected '%v', got '%v'", expected, *record)
+	}
+	record = client.Get(cl)
+	if !proto.Equal(record, &expected) {
+		t.Fatalf("Expected '%v', got '%v'", expected, *record)
+	}
 }
