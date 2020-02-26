@@ -137,5 +137,6 @@ func main() {
 	flag.Parse()
 	server, lis := NewServer(*port)
 	defer server.Stop()
+	defer lis.Close()
 	server.Serve(lis)
 }

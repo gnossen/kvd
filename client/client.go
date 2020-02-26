@@ -16,33 +16,37 @@ var (
 	serverAddr = flag.String("server_addr", "localhost:50051", "The server address in the format of host:port")
 )
 
-func create(client pb.KeyValueStoreClient, name string, value string) {
+func Create(client pb.KeyValueStoreClient, name string, value string) *pb.Record {
 	request := pb.CreateRecordRequest{Record: &pb.Record{Name: name, Value: value}}
-	if _, err := client.CreateRecord(context.Background(), &request); err != nil {
+	var record *pb.Record
+	var err error
+	if record, err = client.CreateRecord(context.Background(), &request); err != nil {
 		log.Fatalf("Creation failed: %v", err)
 	}
-	fmt.Printf("'%s': '%s'\n", name, value)
+	return record
 }
 
-func update(client pb.KeyValueStoreClient, name string, value string) {
+func Update(client pb.KeyValueStoreClient, name string, value string) *pb.Record {
 	request := pb.UpdateRecordRequest{Record: &pb.Record{Name: name, Value: value}}
-	if _, err := client.UpdateRecord(context.Background(), &request); err != nil {
+	var record *pb.Record
+	var err error
+	if record, err = client.UpdateRecord(context.Background(), &request); err != nil {
 		log.Fatalf("Update failed: %v", err)
 	}
-	fmt.Printf("'%s': '%s'\n", name, value)
+	return record
 }
 
-func get(client pb.KeyValueStoreClient, name string) {
+func Get(client pb.KeyValueStoreClient, name string) *pb.Record {
 	request := pb.GetRecordRequest{Name: name}
 	var record *pb.Record
 	var err error
 	if record, err = client.GetRecord(context.Background(), &request); err != nil {
 		log.Fatalf("Get operation failed: %v", err)
 	}
-	fmt.Printf("'%s': '%s'\n", record.Name, record.Value)
+	return record
 }
 
-func watch(client pb.KeyValueStoreClient, name string) {
+func Watch(client pb.KeyValueStoreClient, name string) {
 	request := pb.WatchRecordRequest{Name: name}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -58,8 +62,12 @@ func watch(client pb.KeyValueStoreClient, name string) {
 		if err != nil {
 			log.Fatalf("Encountered error: %v", err)
 		}
-		fmt.Printf("'%s': '%s'\n", record.Name, record.Value)
+		PrintRecord(record)
 	}
+}
+
+func PrintRecord(record *pb.Record) {
+	fmt.Printf("'%s': '%s'\n", record.Name, record.Value)
 }
 
 func main() {
@@ -92,16 +100,16 @@ func main() {
 	switch flag.Args()[0] {
 	case "create":
 		createCmd.Parse(flag.Args()[1:])
-		create(client, *createName, *createValue)
+		PrintRecord(Create(client, *createName, *createValue))
 	case "update":
 		updateCmd.Parse(flag.Args()[1:])
-		update(client, *updateName, *updateValue)
+		PrintRecord(Update(client, *updateName, *updateValue))
 	case "get":
 		getCmd.Parse(flag.Args()[1:])
-		get(client, *getName)
+		PrintRecord(Get(client, *getName))
 	case "watch":
 		watchCmd.Parse(flag.Args()[1:])
-		watch(client, *watchName)
+		Watch(client, *watchName)
 	default:
 		log.Fatalf("Unsupported command '%s'", flag.Args()[1])
 	}
