@@ -115,6 +115,7 @@ func (s *kvStore) removeWatcher(key string, elem *list.Element) {
 func (s *kvStore) WatchRecord(request *pb.WatchRecordRequest,
 	stream pb.KeyValueStore_WatchRecordServer) error {
 	log.Printf("%s: Start Watch '%s'\n", peerString(stream.Context()), request.Name)
+	defer log.Printf("%s: End Watch '%s'\n", peerString(stream.Context()), request.Name)
 	c, elem := s.addWatcher(request.Name)
 	defer s.removeWatcher(request.Name, elem)
 	for {
@@ -125,7 +126,6 @@ func (s *kvStore) WatchRecord(request *pb.WatchRecordRequest,
 			stream.Send(&pb.Record{Name: request.Name, Value: value})
 		}
 	}
-	log.Printf("%s: End Watch '%s'\n", peerString(stream.Context()), request.Name)
 	return nil
 }
 
