@@ -1,11 +1,10 @@
 //go:generate protoc -I../kvd ../kvd/key_value.proto --go_out=plugins=grpc:../kvd
 
-package main
+package server
 
 import (
 	list "container/list"
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -17,10 +16,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/gnossen/kvd/kvd"
-)
-
-var (
-	port = flag.Int("port", 50051, "The server port")
 )
 
 type kvStore struct {
@@ -131,12 +126,4 @@ func NewServer(port int) (*grpc.Server, net.Listener) {
 	pb.RegisterKeyValueStoreServer(grpcServer, store)
 	reflection.Register(grpcServer)
 	return grpcServer, lis
-}
-
-func main() {
-	flag.Parse()
-	server, lis := NewServer(*port)
-	defer server.Stop()
-	defer lis.Close()
-	server.Serve(lis)
 }

@@ -2,6 +2,7 @@ package kvd
 
 import (
 	"testing"
+	"google.golang.org/grpc"
 	"github.com/gnossen/kvd/client"
 	"github.com/gnossen/kvd/server"
 	pb "github.com/gnossen/kvd/kvd"
@@ -10,22 +11,22 @@ import (
 )
 
 func TestUnary(t *testing.T) {
-	server, lis := server.NewServer()
+	server, lis := server.NewServer(1234)
 	go server.Serve(lis)
 	defer server.Stop()
 	defer lis.Close()
-	conn, err := grpc.Dial(*serverAddr, []grpc.DialOption{grpc.WithInsecure()}...)
+	conn, err := grpc.Dial("localhost:1234", []grpc.DialOption{grpc.WithInsecure()}...)
 	if err != nil {
-		log.Fatalf("fail to dial: %v", err)
+		t.Fatalf("fail to dial: %v", err)
 	}
 	defer conn.Close()
 	cl := pb.NewKeyValueStoreClient(conn)
 	record := client.Create(cl, "foo", "oof")
-	expected = pb.Record{Name: "foo", Value: "oof"}
+	expected := pb.Record{Name: "foo", Value: "oof"}
 	if !proto.Equal(record, &expected) {
 		t.Fatalf("Expected '%v', got '%v'", expected, *record)
 	}
-	record = client.Get(cl)
+	record = client.Get(cl, "foo")
 	if !proto.Equal(record, &expected) {
 		t.Fatalf("Expected '%v', got '%v'", expected, *record)
 	}
