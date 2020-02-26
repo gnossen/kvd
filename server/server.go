@@ -27,6 +27,7 @@ type kvStore struct {
 	m        map[string]string
 	mu       sync.RWMutex
 	watchers map[string]*list.List // List[*chan string]
+	ctx      context.Context
 }
 
 func newKeyValueStore() *kvStore {
@@ -88,7 +89,6 @@ func (s *kvStore) UpdateRecord(ctx context.Context, request *pb.UpdateRecordRequ
 }
 
 func (s *kvStore) addWatcher(key string) (*chan string, *list.Element) {
-	fmt.Printf("Adding watcher for key '%s'\n", key)
 	c := make(chan string)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -101,7 +101,6 @@ func (s *kvStore) addWatcher(key string) (*chan string, *list.Element) {
 }
 
 func (s *kvStore) removeWatcher(key string, elem *list.Element) {
-	fmt.Printf("Removing watcher for key '%s'\n", key)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.watchers[key].Remove(elem)
@@ -122,9 +121,8 @@ func (s *kvStore) WatchRecord(request *pb.WatchRecordRequest,
 	return nil
 }
 
-func main() {
-	flag.Parse()
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+func NewServer(port int) (*grpc.Server, net.Listener) {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -132,5 +130,12 @@ func main() {
 	store := newKeyValueStore()
 	pb.RegisterKeyValueStoreServer(grpcServer, store)
 	reflection.Register(grpcServer)
-	grpcServer.Serve(lis)
+	return grpcServer, lis
+}
+
+func main() {
+	flag.Parse()
+	server, lis := NewServer(*port)
+	defer server.Stop()
+	server.Serve(lis)
 }
